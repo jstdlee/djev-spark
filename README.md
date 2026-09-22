@@ -181,9 +181,18 @@ curl -s localhost:8011/v1/systemone \
 Playground: with `TEST_PAGE=1`, `http://<box>:8011/` serves a page with the
 request JSON in a textbox and an image mode dropdown: none, image file,
 webcam one-shot (capture and send), webcam live (a frame every N seconds),
-webcam realtime (capture again as each answer returns). `#req=<base64 JSON>`
-in the URL fills and sends a request on load. `TEST_PAGE` is off by
-default.
+webcam realtime (capture again as each answer returns). The page also exposes
+persistent `endpoint` and `model` fields, so the same UI can switch between
+Jev-like backends. The endpoint accepts a relative path such as
+`/v1/systemone` or a full URL such as
+`http://127.0.0.1:8012/v1/systemone`; the model field is written into the
+request body, for example `jev-latest`, `auto`, or `typed-decisions`. Both can
+also be set in a bookmark with `?endpoint=<url>&model=<name>`. A cross-origin
+backend must allow the demo origin with CORS. `#req=<base64 JSON>` in the URL
+fills and sends a request on load. The built-in text request uses the shared
+core schema, so it works with both djev and Laya; Laya's backend remains
+strict about unsupported extensions and does not accept image/multipart mode.
+`TEST_PAGE` is off by default.
 
 Webcam realtime mode:
 

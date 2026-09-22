@@ -16,6 +16,7 @@
   button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
   button:disabled { opacity: .5; cursor: default; }
   .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+  input[type="url"], input[type="text"], input[type="password"] { width: 18em; font: inherit; background: var(--bg); color: var(--fg); border: 1px solid var(--line); padding: 4px 6px; }
   .muted { color: var(--muted); }
   video, canvas, img.preview { max-width: 100%; border: 1px solid var(--line); display: block; }
   [hidden] { display: none !important; }
@@ -37,6 +38,8 @@
     <div class="bar">
       <button class="primary" id="send">Send</button>
       <label>seed <input id="seed" type="number" value="42" style="width:6em"></label>
+      <label>endpoint <input id="endpoint" type="url" placeholder="/v1/systemone" title="Relative path or full URL"></label>
+      <label>model <input id="model" type="text" placeholder="jev-latest" title="Request model override, for example auto or typed-decisions"></label>
       <label>api key <input id="key" type="password" placeholder="if the server has API_KEY" style="width:12em"></label>
       <span id="status" class="muted"></span>
     </div>
@@ -67,9 +70,8 @@
 <script>
 const $ = id => document.getElementById(id);
 const example = {
-  model: "jev-latest",
+  model: "auto",
   state: {ticket: "Everything is down and we have a demo at noon. Fix it now."},
-  samples: 1,
   questions: {
     urgent: {type: "noul", instructions: "Does the customer need a reply within the hour?"},
     team: {type: "choice", instructions: "Which team owns this?",
@@ -78,9 +80,8 @@ const example = {
   }
 };
 const imageExample = {
-  model: "jev-latest",
+  model: "auto",
   state: {note: "one photo attached"},
-  samples: 1,
   questions: {
     scene: {type: "choice", instructions: "What does the photo show?",
             criteria: {"a person": null, "a room with nobody in it": null, "an object held up to the camera": null, "something else": null}},
@@ -90,7 +91,22 @@ const imageExample = {
 $("req").value = JSON.stringify(example, null, 2);
 try { $("key").value = localStorage.getItem("djev_api_key") || ""; } catch (e) {}
 $("key").onchange = () => { try { localStorage.setItem("djev_api_key", $("key").value); } catch (e) {} };
+const DEFAULT_ENDPOINT = "/v1/systemone";
+try {
+  const params = new URLSearchParams(location.search);
+  $("endpoint").value = params.get("endpoint") || localStorage.getItem("djev_api_endpoint") || DEFAULT_ENDPOINT;
+  $("model").value = params.get("model") || localStorage.getItem("djev_api_model") || example.model;
+} catch (e) {
+  $("endpoint").value = DEFAULT_ENDPOINT;
+  $("model").value = example.model;
+}
+$("endpoint").onchange = () => { try { localStorage.setItem("djev_api_endpoint", $("endpoint").value.trim() || DEFAULT_ENDPOINT); } catch (e) {} };
+$("model").onchange = () => { try { localStorage.setItem("djev_api_model", $("model").value.trim()); } catch (e) {} };
 function authHeaders(h) { const k = $("key").value.trim(); if (k) h["authorization"] = "Bearer " + k; return h; }
+function apiEndpoint() {
+  const value = $("endpoint").value.trim() || DEFAULT_ENDPOINT;
+  return new URL(value, location.href).toString();
+}
 
 let blob = null;          // the attached image
 let stream = null;        // webcam
@@ -167,6 +183,8 @@ async function send() {
   let body;
   try { body = JSON.parse($("req").value); } catch (e) { $("status").innerHTML = '<span class="err">request is not JSON: ' + e.message + "</span>"; return false; }
   body.seed = parseInt($("seed").value) || 42;
+  const model = $("model").value.trim();
+  if (model) body.model = model; else delete body.model;
   if (!blob && Array.isArray(body.images) && typeof body.images[0] === "string") { $("preview").src = body.images[0]; $("preview").hidden = false; }
   inflight = true; $("send").disabled = true; $("status").textContent = "sending...";
   const t0 = performance.now();
@@ -176,9 +194,9 @@ async function send() {
       const fd = new FormData();
       fd.append("request", JSON.stringify(body));
       fd.append("image", blob, "image.jpg");
-      resp = await fetch("/v1/systemone", {method: "POST", headers: authHeaders({}), body: fd});
+      resp = await fetch(apiEndpoint(), {method: "POST", headers: authHeaders({}), body: fd});
     } else {
-      resp = await fetch("/v1/systemone", {method: "POST", headers: authHeaders({"content-type": "application/json"}), body: JSON.stringify(body)});
+      resp = await fetch(apiEndpoint(), {method: "POST", headers: authHeaders({"content-type": "application/json"}), body: JSON.stringify(body)});
     }
     text = await resp.text();
   } catch (e) {
