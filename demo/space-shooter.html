@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JevSpark // Space Shooter Director</title>
+  <style>
+    :root {
+      --bg: #07101f;
+      --panel: rgba(11, 24, 45, .88);
+      --panel-2: rgba(15, 32, 58, .82);
+      --line: rgba(141, 180, 231, .18);
+      --text: #e8f1ff;
+      --muted: #91a6c5;
+      --cyan: #5ce1e6;
+      --blue: #6e8cff;
+      --green: #62e6a7;
+      --red: #ff7086;
+      --amber: #ffc86b;
+      --shadow: 0 22px 70px rgba(0, 0, 0, .35);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 14% 0%, rgba(68, 121, 232, .22), transparent 34rem),
+        radial-gradient(circle at 100% 70%, rgba(36, 202, 199, .12), transparent 32rem),
+        var(--bg);
+      font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button { font: inherit; }
+    .app-shell { width: min(1500px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 42px; }
+    .topbar { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 20px; }
+    .eyebrow { margin: 0 0 6px; color: var(--cyan); font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 4px; font-size: clamp(27px, 4vw, 44px); letter-spacing: -.045em; line-height: 1; }
+    .subtitle { margin-bottom: 0; color: var(--muted); }
+    .brand-chip { display: flex; align-items: center; gap: 9px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; background: rgba(11, 24, 45, .65); color: var(--muted); white-space: nowrap; }
+    .brand-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 18px var(--green); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.58fr) minmax(350px, .92fr); gap: 18px; align-items: start; }
+    .panel { border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(145deg, rgba(18, 37, 67, .9), var(--panel)); box-shadow: var(--shadow); overflow: hidden; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 17px 19px; border-bottom: 1px solid var(--line); }
+    .panel-title { display: flex; align-items: center; gap: 10px; }
+    .panel-title h2 { margin: 0; font-size: 15px; letter-spacing: .02em; }
+    .panel-title p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .title-mark { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(92, 225, 230, .4); border-radius: 9px; color: var(--cyan); background: rgba(92, 225, 230, .09); }
+    .status { display: inline-flex; align-items: center; gap: 7px; padding: 6px 9px; border: 1px solid rgba(98, 230, 167, .3); border-radius: 999px; color: var(--green); background: rgba(98, 230, 167, .08); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .status.thinking { color: var(--amber); border-color: rgba(255, 200, 107, .35); background: rgba(255, 200, 107, .08); }
+    .status.fallback { color: var(--red); border-color: rgba(255, 112, 134, .35); background: rgba(255, 112, 134, .08); }
+    .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 14px currentColor; }
+    .game-wrap { padding: 15px; }
+    .canvas-shell { position: relative; overflow: hidden; border: 1px solid rgba(116, 155, 213, .27); border-radius: 15px; background: #030811; }
+    canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; cursor: crosshair; touch-action: none; }
+    .canvas-caption { display: flex; justify-content: space-between; gap: 12px; margin: 10px 2px 0; color: var(--muted); font-size: 12px; }
+    .canvas-caption strong { color: var(--text); }
+    .control-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 13px; }
+    .controls { color: var(--muted); font-size: 12px; }
+    .pilot-badge { color: var(--green); font-weight: 800; letter-spacing: .04em; }
+    .button-row { display: flex; gap: 8px; }
+    .button { padding: 8px 12px; border: 1px solid rgba(141, 180, 231, .25); border-radius: 9px; color: var(--text); background: rgba(117, 151, 214, .12); cursor: pointer; transition: border-color .2s, background .2s, transform .2s; }
+    .button:disabled { cursor: not-allowed; opacity: .46; transform: none; }
+    .button:hover { border-color: rgba(92, 225, 230, .65); background: rgba(92, 225, 230, .12); transform: translateY(-1px); }
+    .button.primary { border-color: rgba(92, 225, 230, .45); color: #07101f; background: var(--cyan); font-weight: 800; }
+    .right-stack { display: grid; gap: 18px; }
+    .decision-body { padding: 18px; }
+    .directive { padding: 14px; border: 1px solid rgba(110, 140, 255, .3); border-radius: 13px; background: linear-gradient(135deg, rgba(110, 140, 255, .14), rgba(92, 225, 230, .05)); }
+    .directive-label { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .directive-value { margin: 5px 0 0; color: var(--text); font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+    .loop-strip { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; color: var(--muted); font-size: 11px; }
+    .loop-state { display: inline-flex; align-items: center; gap: 7px; }
+    .loop-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px var(--green); }
+    .loop-dot.thinking { background: var(--amber); box-shadow: 0 0 12px var(--amber); }
+    .loop-dot.stopped { background: var(--red); box-shadow: 0 0 12px var(--red); }
+    .loop-countdown { color: var(--text); font-variant-numeric: tabular-nums; }
+    .decision-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 12px; }
+    .movement-grid { grid-template-columns: repeat(3, 1fr); }
+    .decision-card { min-height: 86px; padding: 11px; border: 1px solid var(--line); border-radius: 11px; background: rgba(4, 11, 24, .27); }
+    .decision-card .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    .decision-card .value { margin-top: 8px; color: var(--cyan); font-size: 16px; font-weight: 800; word-break: break-word; }
+    .confidence { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 15px; color: var(--muted); font-size: 12px; }
+    .confidence-bar { flex: 1; height: 7px; overflow: hidden; border-radius: 99px; background: rgba(141, 180, 231, .15); }
+    .confidence-fill { width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--blue), var(--cyan)); transition: width .35s ease; }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; padding: 0 18px 18px; }
+    .metric { padding: 11px; border: 1px solid var(--line); border-radius: 11px; background: rgba(4, 11, 24, .22); }
+    .metric-label { display: block; color: var(--muted); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+    .metric-value { display: block; margin-top: 4px; font-size: 17px; font-weight: 800; letter-spacing: -.02em; }
+    .metric-unit { color: var(--muted); font-size: 10px; font-weight: 500; }
+    .history { padding: 0 18px 18px; }
+    .history-title { display: flex; justify-content: space-between; margin-bottom: 9px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .history-list { display: grid; gap: 7px; max-height: 170px; overflow: auto; }
+    .history-item { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 9px; padding: 8px 9px; border: 1px solid var(--line); border-radius: 9px; background: rgba(4, 11, 24, .2); font-size: 11px; }
+    .history-wave { color: var(--cyan); font-weight: 800; }
+    .history-desc { color: var(--text); }
+    .history-time { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .how-it-works { padding: 15px 18px 17px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .how-it-works strong { color: var(--text); }
+    .footer-note { margin: 16px 2px 0; color: var(--muted); font-size: 12px; }
+    @media (max-width: 1050px) { .layout { grid-template-columns: 1fr; } .right-stack { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 690px) { .app-shell { width: min(100% - 20px, 1500px); padding-top: 18px; } .topbar { align-items: flex-start; flex-direction: column; } .right-stack { grid-template-columns: 1fr; } .decision-grid, .metrics { grid-template-columns: repeat(3, 1fr); } .control-row { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Local agent playground / systemone</p>
+        <h1>JevSpark Space Director</h1>
+        <p class="subtitle">A tiny arcade loop directed by decisions from your local djev API.</p>
+      </div>
+      <div class="brand-chip"><span class="brand-dot"></span><span>no cloud inference in the game loop</span></div>
+    </header>
+
+    <div class="layout">
+      <section class="panel" id="game-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <div class="title-mark">✦</div>
+            <div><h2>Playable surface</h2><p>Move with WASD / arrows · aim with your pointer</p></div>
+          </div>
+          <div class="status" id="game-status">LIVE</div>
+        </div>
+        <div class="game-wrap">
+          <div class="canvas-shell">
+            <canvas id="game-canvas" width="960" height="600" aria-label="Space shooter game"></canvas>
+          </div>
+          <div class="canvas-caption"><span>Current wave <strong id="hud-wave">1</strong></span><span>Score <strong id="hud-score">0</strong></span><span>Hull <strong id="hud-lives">♥♥♥</strong></span></div>
+          <div class="control-row">
+            <span class="controls"><span class="pilot-badge" id="pilot-status">AUTO PILOT ON · parallel: local control + Jev thinking</span> · API never blocks movement</span>
+            <div class="button-row"><button class="button" id="autopilot-button" type="button">Auto Pilot: ON</button><button class="button" id="pause-button" type="button">Pause</button><button class="button primary" id="restart-button" type="button">Restart run</button></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="right-stack">
+        <aside class="panel" id="decision-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="title-mark">⌁</div>
+              <div><h2>JevSpark wave director</h2><p>Decision returned from the local bridge</p></div>
+            </div>
+            <div class="status thinking" id="api-status">THINKING</div>
+          </div>
+          <div class="decision-body">
+            <div class="directive"><div class="directive-label">Next wave directive</div><div class="directive-value" id="directive">Preparing a patrol pattern…</div></div>
+            <div class="loop-strip"><span class="loop-state"><span class="loop-dot" id="loop-dot"></span><span id="loop-status">control loop active</span></span><strong class="loop-countdown" id="loop-countdown">next pulse in 0.45s</strong></div>
+            <div class="loop-strip"><span id="local-context">near context · scanning</span><span id="decision-chain">chain: scan → recenter</span></div>
+            <div class="decision-grid">
+              <div class="decision-card"><div class="label">Enemy profile</div><div class="value" id="enemy-type">—</div></div>
+              <div class="decision-card"><div class="label">Bullet pattern</div><div class="value" id="bullet-pattern">—</div></div>
+              <div class="decision-card"><div class="label">Difficulty</div><div class="value" id="difficulty">—</div></div>
+            </div>
+            <div class="decision-grid movement-grid">
+              <div class="decision-card"><div class="label">Decision mode</div><div class="value" id="decision-mode">Recenter</div></div>
+              <div class="decision-card"><div class="label">Movement bias</div><div class="value" id="movement">Hold</div></div>
+              <div class="decision-card"><div class="label">Urgency</div><div class="value" id="urgency">Observe</div></div>
+            </div>
+            <div class="loop-strip"><span id="decision-reason">small step toward safe center</span><span>trajectory steering only</span></div>
+            <div class="confidence"><span>Decision confidence <strong id="confidence-value">0%</strong></span><div class="confidence-bar"><div class="confidence-fill" id="confidence-fill"></div></div></div>
+          </div>
+          <div class="metrics">
+            <div class="metric"><span class="metric-label">API latency</span><span class="metric-value" id="metric-latency">—<span class="metric-unit"> ms</span></span></div>
+            <div class="metric"><span class="metric-label">Token TPS</span><span class="metric-value" id="metric-tps">—<span class="metric-unit"> tok/s</span></span></div>
+            <div class="metric"><span class="metric-label">Result speed</span><span class="metric-value" id="metric-speed">—<span class="metric-unit"> /s</span></span></div>
+            <div class="metric"><span class="metric-label">Input tokens</span><span class="metric-value" id="metric-input">—</span></div>
+            <div class="metric"><span class="metric-label">Output tokens</span><span class="metric-value" id="metric-output">—</span></div>
+            <div class="metric"><span class="metric-label">Decisions</span><span class="metric-value" id="metric-decisions">0</span></div>
+          </div>
+          <div class="history"><div class="history-title"><span>Recent calls</span><span id="history-count">0 calls</span></div><div class="history-list" id="history-list"><div class="history-item"><span class="history-wave">—</span><span class="history-desc">Waiting for the first local decision</span><span class="history-time">now</span></div></div></div>
+          <div class="how-it-works"><strong>Interface:</strong> local control and trajectory tracking run every 40ms while JevSpark trajectory and movement thinking run in parallel. Every 450ms, the latest trajectory forecast is fed into <code>/api/decision</code>; JevSpark returns a tactical bias while the local autopilot keeps the ship inside a center corridor and applies only small steering steps.</div>
+        </aside>
+      </div>
+    </div>
+    <p class="footer-note">JevSpark chooses high-level strategy and movement bias; deterministic JavaScript executes conservative 60 FPS motion, keeps the ship inside the center corridor, and uses the short-horizon trajectory only to choose the next small direction.</p>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("game-canvas");
+      const ctx = canvas.getContext("2d");
+      const W = canvas.width;
+      const H = canvas.height;
+      const $ = (id) => document.getElementById(id);
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const random = (min, max) => min + Math.random() * (max - min);
+      const pretty = (value) => String(value || "—").replace(/\b\w/g, (letter) => letter.toUpperCase());
+      const LOCAL_CONTROL_TICK_MS = 40;
+      const DIRECTOR_PULSE_MS = 450;
+      const AUTOPILOT_SCAN_MS = LOCAL_CONTROL_TICK_MS;
+      const NEAR_THREAT_RADIUS = 440;
+      const DECISION_HORIZON_S = 1.2;
+      const HIT_INVINCIBILITY_S = 2.4;
+      const MAX_AUTOPILOT_SPEED = 78;
+      const MAX_AUTOPILOT_EVADE_SPEED = 112;
+      const AUTOPILOT_ACCELERATION = 260;
+      const SAFE_CORRIDOR = { left: 250, right: W - 250, top: H * .55, bottom: H - 100 };
+      const CENTER_TARGET = { x: W / 2, y: H * .68 };
+
+      const state = { score: 0, wave: 1, lives: 3, threat: "steady", player_position: { x: 480, y: 520 } };
+      const fallbackDecision = { enemy_type: "scout", bullet_pattern: "aimed", difficulty: "normal", mode: "recenter", movement: "hold", urgency: "observe", confidence: 0, reason: "No nearby collision is imminent; move a small step toward the center corridor.", directive: "normal aimed wave · recenter / hold" };
+      let decision = { ...fallbackDecision };
+      let decisionPending = false;
+      let decisionInFlight = 0;
+      let decisionSequence = 0;
+      let latestAppliedDecision = 0;
+      let decisionEpoch = 0;
+      let decisionTimer = null;
+      let trajectoryPending = false;
+      let trajectoryPrediction = { prediction_source: "local", recommended_lane: "hold", predicted_collision_point: null, trajectory_tracks: [], confidence: 0, escape_lanes: { left: 0, right: 0, up: 0, down: 0 } };
+      let waveActive = false;
+      let awaitingWave = false;
+      let paused = false;
+      let gameOver = false;
+      let lastFrame = performance.now();
+      let fpsFrames = 0;
+      let fpsStamp = performance.now();
+      let fps = 60;
+      let enemyFireClock = 0;
+      let waveClock = 0;
+      let decisionCount = 0;
+      let nextPulseAt = performance.now() + DIRECTOR_PULSE_MS;
+      let lastDecisionReason = "new run";
+      let pointerTarget = null;
+      let autopilot = true;
+      let autopilotTarget = { x: W / 2, y: H - 70 };
+      let autopilotVelocity = { x: 0, y: 0 };
+      let autopilotScanClock = 0;
+      let evasionCount = 0;
+      let contextUiClock = 0;
+      let playerVelocity = { x: 0, y: 0 };
+      const keys = new Set();
+      const stars = Array.from({ length: 120 }, () => ({ x: random(0, W), y: random(0, H), speed: random(12, 80), size: random(.5, 2.1), alpha: random(.22, .8) }));
+      const player = { x: W / 2, y: H - 70, w: 20, h: 18, speed: 280, cooldown: 0, invincible: 0 };
+      let bullets = [];
+      let enemyBullets = [];
+      let enemies = [];
+      let particles = [];
+      let history = [];
+
+      function setApiStatus(kind, label) {
+        const node = $("api-status");
+        node.className = "status " + kind;
+        node.textContent = label;
+      }
+
+      function updateHud() {
+        $("hud-wave").textContent = state.wave;
+        $("hud-score").textContent = state.score.toLocaleString();
+        $("hud-lives").textContent = "♥".repeat(Math.max(0, state.lives)) + "♡".repeat(Math.max(0, 3 - state.lives));
+        $("game-status").textContent = gameOver ? "GAME OVER" : paused ? "PAUSED" : awaitingWave ? "DIRECTOR" : "LIVE";
+        $("game-status").className = "status" + (gameOver ? " fallback" : awaitingWave ? " thinking" : "");
+        $("pilot-status").textContent = autopilot ? `AUTO PILOT ON · parallel: local control + Jev thinking (${evasionCount})` : "MANUAL PILOT · keyboard/pointer";
+        $("autopilot-button").textContent = autopilot ? "Auto Pilot: ON" : "Auto Pilot: OFF";
+      }
+
+      function updateLoopStatus(now = performance.now()) {
+        const dot = $("loop-dot");
+        const status = $("loop-status");
+        const countdown = $("loop-countdown");
+        if (gameOver) {
+          dot.className = "loop-dot stopped";
+          status.textContent = "run ended · restart to resume";
+          countdown.textContent = "paused";
+        } else if (decisionPending || awaitingWave) {
+          dot.className = "loop-dot thinking";
+          status.textContent = awaitingWave ? "wave boundary · local control continues" : "parallel: local control + Jev thinking";
+          countdown.textContent = "processing";
+        } else {
+          dot.className = "loop-dot";
+          status.textContent = `parallel control active · ${lastDecisionReason}`;
+          countdown.textContent = `next pulse in ${Math.max(0, (nextPulseAt - now) / 1000).toFixed(1)}s`;
+        }
+      }
+
+      function updateDecisionPanel(result) {
+        $("directive").textContent = result.directive || "No directive returned";
+        $("enemy-type").textContent = pretty(result.enemy_type);
+        $("bullet-pattern").textContent = pretty(result.bullet_pattern);
+        $("difficulty").textContent = pretty(result.difficulty);
+        $("decision-mode").textContent = pretty(result.mode || "recenter");
+        $("movement").textContent = pretty(result.movement);
+        $("urgency").textContent = pretty(result.urgency);
+        $("decision-reason").textContent = result.reason || "hold unless collision is near";
+        const confidence = clamp(Number(result.confidence || 0), 0, 1);
+        $("confidence-value").textContent = Math.round(confidence * 100) + "%";
+        $("confidence-fill").style.width = Math.round(confidence * 100) + "%";
+        const latency = Number(result.latency_ms);
+        $("metric-latency").innerHTML = Number.isFinite(latency) ? latency.toFixed(1) + '<span class="metric-unit"> ms</span>' : "—<span class=\"metric-unit\"> ms</span>";
+        const tokenTps = Number(result.token_tps);
+        $("metric-tps").innerHTML = Number.isFinite(tokenTps) ? tokenTps.toFixed(1) + '<span class="metric-unit"> tok/s</span>' : "—<span class=\"metric-unit\"> tok/s</span>";
+        const resultSpeed = Number(result.result_speed);
+        $("metric-speed").innerHTML = Number.isFinite(resultSpeed) ? resultSpeed.toFixed(2) + '<span class="metric-unit"> /s</span>' : "—<span class=\"metric-unit\"> /s</span>";
+        $("metric-input").textContent = (result.usage && result.usage.input_tokens) || 0;
+        $("metric-output").textContent = (result.usage && result.usage.output_tokens) || 0;
+        $("metric-decisions").textContent = decisionCount;
+      }
+
+      function addHistory(result, wave) {
+        history.unshift({ wave, text: `${pretty(result.enemy_type)} · ${pretty(result.mode || "recenter")} · ${pretty(result.movement || "hold")}`, latency: result.latency_ms ? `${Number(result.latency_ms).toFixed(0)}ms` : "fallback", ok: result.api_ok });
+        history = history.slice(0, 7);
+        $("history-count").textContent = `${history.length} call${history.length === 1 ? "" : "s"}`;
+        $("history-list").innerHTML = history.map((entry) => `<div class="history-item"><span class="history-wave">W${entry.wave}</span><span class="history-desc">${entry.text}</span><span class="history-time">${entry.latency}</span></div>`).join("");
+      }
+
+      function nearbyThreatContext() {
+        const bullets = enemyBullets.map((bullet) => {
+          const dx = player.x - bullet.x;
+          const dy = player.y - bullet.y;
+          const speedSquared = Math.max(1, bullet.vx * bullet.vx + bullet.vy * bullet.vy);
+          const timeToClosest = clamp((dx * bullet.vx + dy * bullet.vy) / speedSquared, 0, DECISION_HORIZON_S);
+          const closestX = bullet.x + bullet.vx * timeToClosest;
+          const closestY = bullet.y + bullet.vy * timeToClosest;
+          const closestDistance = Math.hypot(player.x - closestX, player.y - closestY);
+          const distance = Math.hypot(dx, dy);
+          const risk = clamp((1 - closestDistance / 170) * .62 + (1 - timeToClosest / DECISION_HORIZON_S) * .38, 0, 1);
+          return { distance, time_to_closest: timeToClosest, closest_distance: closestDistance, risk, x: bullet.x, y: bullet.y, vx: bullet.vx, vy: bullet.vy, pattern: bullet.sweep ? "sweep" : decision.bullet_pattern };
+        }).filter((bullet) => bullet.distance <= NEAR_THREAT_RADIUS).sort((a, b) => b.risk - a.risk).slice(0, 8);
+        const enemiesNear = enemies.map((enemy) => {
+          const dx = player.x - enemy.x;
+          const dy = player.y - enemy.y;
+          const distance = Math.hypot(dx, dy);
+          const enemyVy = (18 + state.wave * 1.5) * difficultyFactor();
+          const closingSpeed = (enemy.vx * dx + enemyVy * dy) / Math.max(1, distance);
+          const timeToContact = closingSpeed > 1 ? Math.max(0, (distance - 42) / closingSpeed) : DECISION_HORIZON_S;
+          const risk = clamp((1 - distance / NEAR_THREAT_RADIUS) * .55 + (1 - Math.min(timeToContact, DECISION_HORIZON_S) / DECISION_HORIZON_S) * .45, 0, 1);
+          return { distance, time_to_contact: timeToContact, risk, x: enemy.x, y: enemy.y, vx: enemy.vx, vy: enemyVy, closing_speed: closingSpeed, type: enemy.type, hp: enemy.hp };
+        }).filter((enemy) => enemy.distance <= NEAR_THREAT_RADIUS).sort((a, b) => b.risk - a.risk).slice(0, 6);
+        return { radius_px: NEAR_THREAT_RADIUS, bullets, enemies: enemiesNear };
+      }
+
+      function trajectoryRiskAt(x, y, context) {
+        let risk = 0;
+        for (const bullet of context.bullets) {
+          let closest = Number.POSITIVE_INFINITY;
+          let closestTime = DECISION_HORIZON_S;
+          for (let horizon = .06; horizon <= DECISION_HORIZON_S; horizon += .06) {
+            const distance = Math.hypot(x - (bullet.x + bullet.vx * horizon), y - (bullet.y + bullet.vy * horizon));
+            if (distance < closest) { closest = distance; closestTime = horizon; }
+          }
+          const crossingRisk = clamp((76 - closest) / 76, 0, 1) * (1 - closestTime / DECISION_HORIZON_S);
+          risk += crossingRisk * 1.5;
+        }
+        for (const enemy of context.enemies) {
+          const closest = Math.hypot(x - (enemy.x + enemy.vx * .7), y - (enemy.y + enemy.vy * .7));
+          risk += clamp((94 - closest) / 94, 0, 1) * 1.4;
+        }
+        return clamp(risk / Math.max(1, context.bullets.length + context.enemies.length), 0, 1);
+      }
+
+      function pathRiskAt(x, y, context) {
+        const distance = Math.hypot(x - player.x, y - player.y);
+        const samples = clamp(Math.ceil(distance / 24), 2, 5);
+        let risk = 0;
+        for (let index = 1; index <= samples; index += 1) {
+          const progress = index / samples;
+          const sampleX = player.x + (x - player.x) * progress;
+          const sampleY = player.y + (y - player.y) * progress;
+          risk += trajectoryRiskAt(sampleX, sampleY, context) * (.72 + progress * .28);
+        }
+        return risk / samples;
+      }
+
+      function immediateEscapeLane(context) {
+        const bullet = context.bullets.filter((item) => item.time_to_closest < .9).sort((a, b) => a.closest_distance - b.closest_distance)[0];
+        const enemy = context.enemies.filter((item) => item.time_to_contact < .9).sort((a, b) => a.distance - b.distance)[0];
+        const threat = bullet || enemy;
+        if (!threat) return null;
+        const futureTime = bullet ? clamp(bullet.time_to_closest, .08, .9) : clamp(enemy.time_to_contact, .08, .9);
+        const projectedX = (threat.x || player.x) + (threat.vx || 0) * futureTime;
+        if (player.x <= SAFE_CORRIDOR.left + 42) return "right";
+        if (player.x >= SAFE_CORRIDOR.right - 42) return "left";
+        if (Math.abs(projectedX - player.x) < 72) return player.x <= CENTER_TARGET.x ? "right" : "left";
+        return projectedX < player.x ? "right" : "left";
+      }
+
+      function predictTrajectory(context, assessment) {
+        const laneStep = 34;
+        const lanePoints = {
+          hold: { x: player.x, y: player.y },
+          left: { x: clamp(player.x - laneStep, SAFE_CORRIDOR.left, SAFE_CORRIDOR.right), y: clamp(player.y, SAFE_CORRIDOR.top, SAFE_CORRIDOR.bottom) },
+          right: { x: clamp(player.x + laneStep, SAFE_CORRIDOR.left, SAFE_CORRIDOR.right), y: clamp(player.y, SAFE_CORRIDOR.top, SAFE_CORRIDOR.bottom) },
+          up: { x: clamp(player.x, SAFE_CORRIDOR.left, SAFE_CORRIDOR.right), y: clamp(player.y - laneStep, SAFE_CORRIDOR.top, SAFE_CORRIDOR.bottom) },
+          down: { x: clamp(player.x, SAFE_CORRIDOR.left, SAFE_CORRIDOR.right), y: clamp(player.y + laneStep, SAFE_CORRIDOR.top, SAFE_CORRIDOR.bottom) },
+        };
+        const laneRisk = Object.fromEntries(Object.entries(lanePoints).map(([lane, point]) => [lane, roundRisk(trajectoryRiskAt(point.x, point.y, context) + (lane === "hold" ? 0 : .01))]));
+        const tracks = context.bullets.slice(0, 8).map((bullet) => {
+          const time = bullet.time_to_closest;
+          return {
+            x: roundRisk(bullet.x + bullet.vx * time),
+            y: roundRisk(bullet.y + bullet.vy * time),
+            time_to_crossing: roundRisk(time),
+            miss_distance: roundRisk(bullet.closest_distance),
+            risk: roundRisk(bullet.risk),
+          };
+        }).sort((a, b) => a.time_to_crossing - b.time_to_crossing);
+        const nearest = tracks[0]?.time_to_crossing ?? DECISION_HORIZON_S;
+        const nearestTrack = tracks[0] || null;
+        const centerDeltaX = CENTER_TARGET.x - player.x;
+        const centerDeltaY = CENTER_TARGET.y - player.y;
+        const centerLane = Math.abs(centerDeltaX) >= Math.abs(centerDeltaY) ? (centerDeltaX < 0 ? "left" : "right") : centerDeltaY < 0 ? "up" : "down";
+        const directionOrder = context.bullets.length || context.enemies.length ? ["left", "right", "up", "down", "hold"] : [centerLane, "hold", "left", "right", "up", "down"];
+        const recommendedLane = immediateEscapeLane(context) || directionOrder.slice().sort((a, b) => laneRisk[a] - laneRisk[b] || directionOrder.indexOf(a) - directionOrder.indexOf(b))[0];
+        const allLanesBlocked = false;
+        return {
+          prediction_source: "local",
+          recommended_lane: recommendedLane,
+          predicted_collision_point: tracks[0] ? { x: tracks[0].x, y: tracks[0].y } : null,
+          nearest_bullet_tti: nearest,
+          nearest_enemy_tti: context.enemies.reduce((best, enemy) => Math.min(best, enemy.time_to_contact), DECISION_HORIZON_S),
+          imminent_bullets: assessment.imminentBullets.length,
+          imminent_enemies: assessment.imminentEnemies.length,
+          no_survival: assessment.noSurvival || allLanesBlocked,
+          best_lane_risk: roundRisk(Math.min(...Object.values(laneRisk))),
+          escape_lanes: laneRisk,
+          trajectory_tracks: tracks,
+          confidence: context.bullets.length || context.enemies.length ? .86 : .72,
+          safe_target: { x: Math.round(lanePoints[recommendedLane].x), y: Math.round(lanePoints[recommendedLane].y) },
+          predicted_direction: nearestTrack ? (nearestTrack.x >= player.x ? "left" : "right") : centerLane,
+        };
+      }
+
+      function roundRisk(value) { return Math.round(clamp(Number(value) || 0, 0, 999) * 1000) / 1000; }
+
+      function updateLocalContext(context = nearbyThreatContext()) {
+        const riskValues = [...context.bullets, ...context.enemies].map((item) => item.risk || 0);
+        const maxRisk = riskValues.length ? Math.max(...riskValues) : 0;
+        const assessment = assessControl(context);
+        const forecastLane = trajectoryPrediction.recommended_lane || "hold";
+        const forecastTti = Number(trajectoryPrediction.nearest_bullet_tti);
+        const forecastLabel = Number.isFinite(forecastTti) && forecastTti < DECISION_HORIZON_S ? ` · track ${forecastLane} / ${forecastTti.toFixed(2)}s` : ` · track ${forecastLane}`;
+        $("local-context").textContent = `near context · ${context.bullets.length} bullets / ${context.enemies.length} enemies · risk ${Math.round(maxRisk * 100)}%${forecastLabel}${assessment.noSurvival ? " · no lane" : ""}`;
+        $("decision-chain").textContent = `chain: track → ${assessment.noSurvival ? "bomb gate" : assessment.phase} → ${assessment.noSurvival ? "clear" : assessment.phase === "recenter" ? "center step" : assessment.phase === "hold_center" ? "preserve room" : "steer"}`;
+      }
+
+      function preferredCenter() {
+        return { x: W / 2, y: H * .70 };
+      }
+
+      function assessControl(context) {
+        const center = CENTER_TARGET;
+        const centerError = Math.hypot(player.x - center.x, player.y - center.y);
+        const maxRisk = Math.max(0, ...context.bullets.map((item) => item.risk), ...context.enemies.map((item) => item.risk));
+        const imminentBullets = context.bullets.filter((bullet) => bullet.closest_distance < 125 && bullet.time_to_closest < .9);
+        const imminentEnemies = context.enemies.filter((enemy) => enemy.time_to_contact < .9 && enemy.distance < 160);
+        const imminent = imminentBullets.length > 0 || imminentEnemies.length > 0;
+        const insideCorridor = player.x >= SAFE_CORRIDOR.left && player.x <= SAFE_CORRIDOR.right && player.y >= SAFE_CORRIDOR.top && player.y <= SAFE_CORRIDOR.bottom;
+        const phase = imminent ? "evade" : maxRisk >= .34 ? "adjust" : !insideCorridor || centerError > 54 ? "recenter" : "hold_center";
+        return {
+          phase,
+          maxRisk,
+          imminentBullets,
+          imminentEnemies,
+          noSurvival: false,
+          center,
+          centerError,
+          maneuverRoom: { left: player.x, right: W - player.x, up: player.y - H * .48, down: H - player.y },
+        };
+      }
+
+      function localRequestState(context, assessment, forecast) {
+        return {
+          ...state,
+          player_position: { x: Math.round(player.x), y: Math.round(player.y) },
+          player_velocity: { x: playerVelocity.x, y: playerVelocity.y },
+          threat: assessment.phase === "evade" ? "critical" : assessment.phase === "adjust" ? "rising" : "steady",
+          autopilot,
+          local_evasion_count: evasionCount,
+          preferred_center: { x: Math.round(assessment.center.x), y: Math.round(assessment.center.y) },
+          center_delta: { x: Math.round(assessment.center.x - player.x), y: Math.round(assessment.center.y - player.y) },
+          center_error_px: Math.round(assessment.centerError),
+          maneuver_room: assessment.maneuverRoom,
+          control_phase: assessment.phase,
+          nearby_threats: context,
+          escape_lanes: forecast.escape_lanes,
+          safe_target: forecast.safe_target,
+          battlefield_summary: forecast,
+          trajectory_prediction: trajectoryPrediction,
+        };
+      }
+
+      async function requestTrajectoryPrediction(reason) {
+        if (gameOver || paused || trajectoryPending) return;
+        trajectoryPending = true;
+        const context = nearbyThreatContext();
+        const assessment = assessControl(context);
+        const localForecast = predictTrajectory(context, assessment);
+        try {
+          const response = await fetch("/api/trajectory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(localRequestState(context, assessment, localForecast)) });
+          if (!response.ok) throw new Error(`trajectory bridge returned ${response.status}`);
+          const result = await response.json();
+          if (result.api_ok) trajectoryPrediction = { ...localForecast, ...result, prediction_source: "jev+local" };
+          else trajectoryPrediction = localForecast;
+        } catch (error) {
+          trajectoryPrediction = { ...localForecast, prediction_source: "local-fallback", prediction_error: error.message };
+        } finally {
+          trajectoryPending = false;
+          updateLocalContext(context);
+        }
+      }
+
+      async function requestDecision(reason) {
+        if (gameOver || paused || decisionInFlight >= 2) return;
+        const requestId = ++decisionSequence;
+        const requestEpoch = decisionEpoch;
+        decisionInFlight += 1;
+        decisionPending = true;
+        lastDecisionReason = reason;
+        updateLoopStatus();
+        setApiStatus("thinking", "THINKING");
+        const context = nearbyThreatContext();
+        const assessment = assessControl(context);
+        const localForecast = predictTrajectory(context, assessment);
+        trajectoryPrediction = {
+          ...localForecast,
+          ...trajectoryPrediction,
+          safe_target: localForecast.safe_target,
+          escape_lanes: trajectoryPrediction.escape_lanes || localForecast.escape_lanes,
+          best_lane_risk: trajectoryPrediction.best_lane_risk ?? localForecast.best_lane_risk,
+          no_survival: localForecast.no_survival || trajectoryPrediction.no_survival,
+        };
+        const requestState = localRequestState(context, assessment, localForecast);
+        updateLocalContext(context);
+        try {
+          const response = await fetch("/api/decision", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestState) });
+          if (!response.ok) throw new Error(`bridge returned ${response.status}`);
+          const result = await response.json();
+          if (requestEpoch === decisionEpoch && requestId >= latestAppliedDecision && !gameOver) {
+            latestAppliedDecision = requestId;
+            decision = { ...fallbackDecision, ...result };
+            decisionCount += 1;
+            setApiStatus(result.api_ok ? "" : "fallback", result.api_ok ? "LIVE" : "FALLBACK");
+            updateDecisionPanel(decision);
+            addHistory(decision, state.wave);
+          }
+        } catch (error) {
+          if (requestEpoch === decisionEpoch && requestId >= latestAppliedDecision && !gameOver) {
+            latestAppliedDecision = requestId;
+            decision = { ...fallbackDecision, api_ok: false, error: error.message };
+            decisionCount += 1;
+            setApiStatus("fallback", "FALLBACK");
+            updateDecisionPanel(decision);
+            addHistory(decision, state.wave);
+          }
+        } finally {
+          decisionInFlight = Math.max(0, decisionInFlight - 1);
+          decisionPending = decisionInFlight > 0;
+          if (requestEpoch === decisionEpoch) nextPulseAt = performance.now() + DIRECTOR_PULSE_MS;
+          if (requestEpoch === decisionEpoch && awaitingWave && !gameOver) {
+            awaitingWave = false;
+            startWave();
+          }
+          updateHud();
+          updateLoopStatus();
+        }
+      }
+
+      function stopDecisionLoop() {
+        if (decisionTimer !== null) {
+          window.clearInterval(decisionTimer);
+          decisionTimer = null;
+        }
+      }
+
+      function startDecisionLoop() {
+        if (decisionTimer === null) decisionTimer = window.setInterval(() => {
+          requestTrajectoryPrediction("forecast pulse");
+          requestDecision("control pulse");
+        }, DIRECTOR_PULSE_MS);
+      }
+
+      function difficultyFactor() { return { easy: .78, normal: 1, hard: 1.22, extreme: 1.48 }[decision.difficulty] || 1; }
+
+      function createEnemy(type, index, count) {
+        const isTank = type === "tank";
+        const isSwarm = type === "swarm";
+        const width = isTank ? 48 : isSwarm ? 23 : 32;
+        const height = isTank ? 34 : isSwarm ? 19 : 24;
+        return { type, x: 75 + (index % Math.min(count, 8)) * 112 + random(-20, 20), y: -35 - Math.floor(index / 8) * 62, w: width, h: height, hp: isTank ? 4 : isSwarm ? 1 : 2, maxHp: isTank ? 4 : isSwarm ? 1 : 2, vx: (isSwarm ? 76 : 35) * (index % 2 ? 1 : -1), phase: random(0, Math.PI * 2) };
+      }
+
+      function spawnWave() {
+        const count = decision.enemy_type === "tank" ? Math.min(4 + Math.floor(state.wave / 3), 6) : decision.enemy_type === "swarm" ? Math.min(10 + state.wave, 20) : Math.min(6 + Math.floor(state.wave / 2), 12);
+        enemies = Array.from({ length: count }, (_, index) => createEnemy(decision.enemy_type, index, count));
+        bullets = [];
+        enemyBullets = [];
+        enemyFireClock = .8;
+        waveClock = 0;
+        waveActive = true;
+        updateHud();
+      }
+
+      function startWave() { spawnWave(); }
+
+      function nextWave() {
+        if (!waveActive || gameOver) return;
+        waveActive = false;
+        awaitingWave = true;
+        state.wave += 1;
+        state.threat = state.lives === 1 ? "critical" : state.wave > 4 ? "rising" : "steady";
+        updateHud();
+        requestDecision("wave boundary");
+      }
+
+      function resetGame() {
+        state.score = 0; state.wave = 1; state.lives = 3; state.threat = "steady";
+        decisionEpoch += 1; latestAppliedDecision = 0; startDecisionLoop();
+        player.x = W / 2; player.y = H - 70; player.invincible = 0; player.cooldown = 0;
+        gameOver = false; paused = false; awaitingWave = false; waveActive = false;
+        decision = { ...fallbackDecision }; bullets = []; enemyBullets = []; particles = []; history = []; decisionCount = 0;
+        autopilotTarget = { x: player.x, y: player.y }; autopilotVelocity = { x: 0, y: 0 }; autopilotScanClock = 0; evasionCount = 0;
+        contextUiClock = 0; playerVelocity = { x: 0, y: 0 };
+        nextPulseAt = performance.now() + DIRECTOR_PULSE_MS;
+        updateDecisionPanel(decision); addHistory(decision, 0); startWave(); updateHud(); updateLoopStatus(); requestTrajectoryPrediction("new run"); requestDecision("new run");
+      }
+
+      function threatScoreAt(x, y, context, assessment) {
+        const centerDistance = Math.hypot(x - CENTER_TARGET.x, y - CENTER_TARGET.y);
+        const centerWeight = assessment.phase === "evade" ? .014 : .11;
+        let score = centerDistance * centerWeight;
+        score += pathRiskAt(x, y, context) * (assessment.phase === "evade" ? 760 : 420);
+        const edgeMargin = 100;
+        const edgeRoom = Math.min(x - SAFE_CORRIDOR.left, SAFE_CORRIDOR.right - x, y - SAFE_CORRIDOR.top, SAFE_CORRIDOR.bottom - y);
+        score += clamp((edgeMargin - edgeRoom) / edgeMargin, 0, 1) * (assessment.phase === "evade" ? 180 : 640);
+        if (x < SAFE_CORRIDOR.left || x > SAFE_CORRIDOR.right || y < SAFE_CORRIDOR.top || y > SAFE_CORRIDOR.bottom) score += 800;
+        const collisionPoint = trajectoryPrediction.predicted_collision_point;
+        if (collisionPoint) score += clamp((120 - Math.hypot(x - collisionPoint.x, y - collisionPoint.y)) / 120, 0, 1) * 360;
+        return score;
+      }
+
+      function findSafeTarget(context, assessment) {
+        const forecast = trajectoryPrediction;
+        const step = assessment.phase === "evade" ? 34 : 26;
+        const candidateFor = (lane) => ({
+          x: clamp(player.x + (lane === "left" ? -step : lane === "right" ? step : 0), SAFE_CORRIDOR.left, SAFE_CORRIDOR.right),
+          y: clamp(player.y + (lane === "up" ? -step : lane === "down" ? step : 0), SAFE_CORRIDOR.top, SAFE_CORRIDOR.bottom),
+        });
+        const centerLane = Math.abs(CENTER_TARGET.x - player.x) >= Math.abs(CENTER_TARGET.y - player.y) ? (CENTER_TARGET.x < player.x ? "left" : "right") : CENTER_TARGET.y < player.y ? "up" : "down";
+        const preferredLane = assessment.phase === "evade" ? (forecast.recommended_lane || "hold") : centerLane;
+        const candidates = ["hold", preferredLane, forecast.predicted_direction, "left", "right", "up", "down"]
+          .filter((lane, index, lanes) => ["hold", "left", "right", "up", "down"].includes(lane) && lanes.indexOf(lane) === index)
+          .map(candidateFor);
+        return candidates.reduce((best, candidate) => {
+          const forecastRisk = trajectoryRiskAt(candidate.x, candidate.y, context);
+          const pathRisk = pathRiskAt(candidate.x, candidate.y, context);
+          const laneDistance = forecast.safe_target ? Math.hypot(candidate.x - forecast.safe_target.x, candidate.y - forecast.safe_target.y) : 0;
+          const candidateScore = threatScoreAt(candidate.x, candidate.y, context, assessment) + forecastRisk * 260 + pathRisk * 220 + laneDistance * (assessment.phase === "evade" ? .012 : .002);
+          return candidateScore < best.score ? { ...candidate, score: candidateScore, imminent: assessment.phase === "evade" } : best;
+        }, { x: player.x, y: player.y, score: Number.POSITIVE_INFINITY, imminent: false });
+      }
+
+      function updateAutopilot(dt) {
+        autopilotScanClock -= dt * 1000;
+        if (autopilotScanClock <= 0) {
+          const context = nearbyThreatContext();
+          const assessment = assessControl(context);
+          trajectoryPrediction = predictTrajectory(context, assessment);
+          const nextTarget = findSafeTarget(context, assessment);
+          if (Math.hypot(nextTarget.x - autopilotTarget.x, nextTarget.y - autopilotTarget.y) > 44) evasionCount += 1;
+          autopilotTarget = nextTarget;
+          autopilotScanClock = AUTOPILOT_SCAN_MS;
+          updateHud();
+        }
+        const maxSpeed = autopilotTarget.imminent ? MAX_AUTOPILOT_EVADE_SPEED : MAX_AUTOPILOT_SPEED;
+        const dx = autopilotTarget.x - player.x;
+        const dy = autopilotTarget.y - player.y;
+        const distance = Math.hypot(dx, dy);
+        const desiredSpeed = Math.min(maxSpeed, distance * 3.2);
+        const desiredVelocity = distance > 1 ? { x: dx / distance * desiredSpeed, y: dy / distance * desiredSpeed } : { x: 0, y: 0 };
+        const maxDelta = AUTOPILOT_ACCELERATION * dt * (autopilotTarget.imminent ? 1.35 : 1);
+        autopilotVelocity.x += clamp(desiredVelocity.x - autopilotVelocity.x, -maxDelta, maxDelta);
+        autopilotVelocity.y += clamp(desiredVelocity.y - autopilotVelocity.y, -maxDelta, maxDelta);
+        const currentSpeed = Math.hypot(autopilotVelocity.x, autopilotVelocity.y);
+        if (currentSpeed > maxSpeed) {
+          autopilotVelocity.x = autopilotVelocity.x / currentSpeed * maxSpeed;
+          autopilotVelocity.y = autopilotVelocity.y / currentSpeed * maxSpeed;
+        }
+        player.x += autopilotVelocity.x * dt;
+        player.y += autopilotVelocity.y * dt;
+        player.x = clamp(player.x, 26, W - 26);
+        player.y = clamp(player.y, H * .48, H - 25);
+      }
+
+      function updateManualControls(dt) {
+        const axisX = (keys.has("arrowright") || keys.has("d") ? 1 : 0) - (keys.has("arrowleft") || keys.has("a") ? 1 : 0);
+        const axisY = (keys.has("arrowdown") || keys.has("s") ? 1 : 0) - (keys.has("arrowup") || keys.has("w") ? 1 : 0);
+        player.x = clamp(player.x + axisX * player.speed * dt, 26, W - 26);
+        player.y = clamp(player.y + axisY * player.speed * dt, H * .48, H - 25);
+        if (pointerTarget) { player.x += (pointerTarget.x - player.x) * Math.min(1, dt * 11); player.y += (pointerTarget.y - player.y) * Math.min(1, dt * 11); }
+      }
+
+      function shoot() { bullets.push({ x: player.x, y: player.y - 20, vy: -580, radius: 3 }); }
+
+      function enemyShoot() {
+        if (!enemies.length) return;
+        const enemy = enemies[Math.floor(Math.random() * enemies.length)];
+        const dx = player.x - enemy.x;
+        const dy = player.y - enemy.y;
+        const angle = Math.atan2(dy, dx);
+        const speed = 145 + difficultyFactor() * 24;
+        const add = (a, s = speed) => enemyBullets.push({ x: enemy.x, y: enemy.y + enemy.h / 2, vx: Math.cos(a) * s, vy: Math.sin(a) * s, radius: 4 });
+        if (decision.bullet_pattern === "spray") { [-.18, 0, .18].forEach((offset) => add(angle + offset, speed * .88)); }
+        else if (decision.bullet_pattern === "sweep") { const x = random(38, W - 38); enemyBullets.push({ x, y: -8, vx: 0, vy: speed * .92, radius: 5, sweep: true }); }
+        else add(angle);
+      }
+
+      function hitPlayer() {
+        if (player.invincible > 0 || gameOver) return;
+        state.lives -= 1; player.invincible = HIT_INVINCIBILITY_S; burst(player.x, player.y, "#ff7086", 22); updateHud();
+        if (state.lives <= 0) { gameOver = true; waveActive = false; stopDecisionLoop(); updateHud(); }
+      }
+
+      function burst(x, y, color, amount = 10) { for (let i = 0; i < amount; i += 1) particles.push({ x, y, vx: random(-120, 120), vy: random(-120, 120), life: random(.3, .8), maxLife: .8, color }); }
+      function overlaps(a, b) { return Math.abs(a.x - b.x) < (a.w || a.radius * 2) / 2 + (b.w || b.radius * 2) / 2 && Math.abs(a.y - b.y) < (a.h || a.radius * 2) / 2 + (b.h || b.radius * 2) / 2; }
+
+      function update(dt) {
+        if (paused || gameOver) return;
+        stars.forEach((star) => { star.y += star.speed * dt; if (star.y > H) { star.y = 0; star.x = random(0, W); } });
+        particles = particles.filter((particle) => { particle.x += particle.vx * dt; particle.y += particle.vy * dt; particle.life -= dt; return particle.life > 0; });
+        if (player.invincible > 0) player.invincible -= dt;
+        const previousPlayerPosition = { x: player.x, y: player.y };
+        if (autopilot) updateAutopilot(dt); else updateManualControls(dt);
+        playerVelocity = { x: Math.round((player.x - previousPlayerPosition.x) / Math.max(dt, .001)), y: Math.round((player.y - previousPlayerPosition.y) / Math.max(dt, .001)) };
+        contextUiClock -= dt * 1000;
+        if (contextUiClock <= 0) { updateLocalContext(); contextUiClock = 220; }
+        player.cooldown -= dt;
+        if (player.cooldown <= 0) { shoot(); player.cooldown = .17; }
+        bullets = bullets.filter((bullet) => { bullet.y += bullet.vy * dt; return bullet.y > -15; });
+        enemyBullets = enemyBullets.filter((bullet) => { bullet.x += bullet.vx * dt; bullet.y += bullet.vy * dt; if (overlaps({ x: bullet.x, y: bullet.y, w: 8, h: 8 }, player)) { hitPlayer(); return false; } return bullet.y < H + 20 && bullet.x > -20 && bullet.x < W + 20; });
+        const factor = difficultyFactor();
+        enemies.forEach((enemy) => { enemy.y += (18 + state.wave * 1.5) * factor * dt; enemy.x += enemy.vx * factor * dt; enemy.x += Math.sin(waveClock * 2 + enemy.phase) * (enemy.type === "swarm" ? 28 : 9) * dt; if (enemy.x < enemy.w / 2 || enemy.x > W - enemy.w / 2) enemy.vx *= -1; if (overlaps(enemy, player)) hitPlayer(); if (enemy.y > H + 25) enemy.y = -20; });
+        for (let i = bullets.length - 1; i >= 0; i -= 1) {
+          let removed = false;
+          for (let j = enemies.length - 1; j >= 0; j -= 1) {
+            const bullet = bullets[i]; const enemy = enemies[j];
+            if (overlaps({ x: bullet.x, y: bullet.y, w: 7, h: 14 }, enemy)) { bullets.splice(i, 1); enemy.hp -= 1; burst(bullet.x, bullet.y, enemy.type === "tank" ? "#ffc86b" : "#5ce1e6", 4); if (enemy.hp <= 0) { state.score += enemy.type === "tank" ? 80 : enemy.type === "swarm" ? 12 : 28; burst(enemy.x, enemy.y, enemy.type === "tank" ? "#ffc86b" : "#6e8cff", enemy.type === "tank" ? 20 : 10); enemies.splice(j, 1); updateHud(); } removed = true; break; }
+          }
+          if (removed) continue;
+        }
+        enemyFireClock -= dt; if (enemyFireClock <= 0 && enemies.length) { enemyShoot(); enemyFireClock = Math.max(.72, 1.9 / factor); }
+        waveClock += dt;
+        if (!enemies.length && waveActive) nextWave();
+      }
+
+      function drawBackground() {
+        const gradient = ctx.createLinearGradient(0, 0, 0, H); gradient.addColorStop(0, "#07152c"); gradient.addColorStop(1, "#020711"); ctx.fillStyle = gradient; ctx.fillRect(0, 0, W, H);
+        stars.forEach((star) => { ctx.globalAlpha = star.alpha; ctx.fillStyle = "#c6dcff"; ctx.fillRect(star.x, star.y, star.size, star.size); }); ctx.globalAlpha = 1;
+        ctx.strokeStyle = "rgba(100, 155, 228, .08)"; ctx.lineWidth = 1; for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); } for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+      }
+
+      function drawShip() {
+        if (player.invincible > 0 && Math.floor(player.invincible * 12) % 2 === 0) return;
+        ctx.save(); ctx.translate(player.x, player.y); ctx.shadowBlur = 14; ctx.shadowColor = "#5ce1e6"; ctx.fillStyle = "#5ce1e6"; ctx.beginPath(); ctx.moveTo(0, -13); ctx.lineTo(11, 8); ctx.lineTo(4, 6); ctx.lineTo(0, 11); ctx.lineTo(-4, 6); ctx.lineTo(-11, 8); ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = "#e8f1ff"; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(4, 4); ctx.lineTo(-4, 4); ctx.closePath(); ctx.fill(); ctx.restore();
+      }
+
+      function drawEnemy(enemy) {
+        const colors = { scout: "#6e8cff", tank: "#ffc86b", swarm: "#c47bff" }; const color = colors[enemy.type] || colors.scout;
+        ctx.save(); ctx.translate(enemy.x, enemy.y); ctx.shadowBlur = 14; ctx.shadowColor = color; ctx.strokeStyle = color; ctx.fillStyle = color + "44"; ctx.lineWidth = 2;
+        if (enemy.type === "tank") { ctx.fillRect(-enemy.w / 2, -enemy.h / 2, enemy.w, enemy.h); ctx.strokeRect(-enemy.w / 2, -enemy.h / 2, enemy.w, enemy.h); ctx.fillStyle = color; ctx.fillRect(-14, -3, 28 * (enemy.hp / enemy.maxHp), 5); }
+        else if (enemy.type === "swarm") { ctx.beginPath(); ctx.moveTo(0, -enemy.h / 2); ctx.lineTo(enemy.w / 2, enemy.h / 2); ctx.lineTo(-enemy.w / 2, enemy.h / 2); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+        else { ctx.beginPath(); ctx.moveTo(0, -enemy.h / 2); ctx.lineTo(enemy.w / 2, 0); ctx.lineTo(0, enemy.h / 2); ctx.lineTo(-enemy.w / 2, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+        ctx.restore();
+      }
+
+      function draw() {
+        drawBackground();
+        bullets.forEach((bullet) => { ctx.fillStyle = "#e8f1ff"; ctx.shadowBlur = 12; ctx.shadowColor = "#5ce1e6"; ctx.beginPath(); ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; });
+        enemyBullets.forEach((bullet) => { ctx.fillStyle = bullet.sweep ? "#ffc86b" : "#ff7086"; ctx.shadowBlur = 11; ctx.shadowColor = ctx.fillStyle; ctx.beginPath(); ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; });
+        enemies.forEach(drawEnemy); drawShip();
+        particles.forEach((particle) => { ctx.globalAlpha = Math.max(0, particle.life / particle.maxLife); ctx.fillStyle = particle.color; ctx.fillRect(particle.x, particle.y, 3, 3); }); ctx.globalAlpha = 1;
+        if (paused || gameOver || awaitingWave) { ctx.fillStyle = "rgba(2, 7, 17, .66)"; ctx.fillRect(0, 0, W, H); ctx.textAlign = "center"; ctx.fillStyle = "#e8f1ff"; ctx.font = "800 28px Inter, sans-serif"; ctx.fillText(gameOver ? "Run ended" : paused ? "Paused" : "Director is choosing the next wave", W / 2, H / 2 - 8); ctx.fillStyle = "#91a6c5"; ctx.font = "14px Inter, sans-serif"; ctx.fillText(gameOver ? "Restart run to try another strategy" : paused ? "Press Pause to continue" : "The game loop remains responsive", W / 2, H / 2 + 22); ctx.textAlign = "left"; }
+      }
+
+      function frame(now) {
+        const dt = Math.min(.034, (now - lastFrame) / 1000); lastFrame = now; update(dt); draw();
+        fpsFrames += 1; if (now - fpsStamp > 1000) { fps = fpsFrames; fpsFrames = 0; fpsStamp = now; }
+        updateLoopStatus(now);
+        window.requestAnimationFrame(frame);
+      }
+
+      function canvasPoint(event) { const rect = canvas.getBoundingClientRect(); return { x: clamp((event.clientX - rect.left) * W / rect.width, 20, W - 20), y: clamp((event.clientY - rect.top) * H / rect.height, H * .48, H - 20) }; }
+      canvas.addEventListener("pointermove", (event) => { pointerTarget = canvasPoint(event); });
+      canvas.addEventListener("pointerleave", () => { pointerTarget = null; });
+      window.addEventListener("keydown", (event) => { const key = event.key.toLowerCase(); if (["arrowleft", "arrowright", "arrowup", "arrowdown", "w", "a", "s", "d", " "].includes(key)) event.preventDefault(); if (key === " ") paused = !paused; else keys.add(key); updateHud(); });
+      window.addEventListener("keyup", (event) => keys.delete(event.key.toLowerCase()));
+      $("autopilot-button").addEventListener("click", () => { autopilot = !autopilot; pointerTarget = null; updateHud(); });
+      $("pause-button").addEventListener("click", () => { paused = !paused; $("pause-button").textContent = paused ? "Resume" : "Pause"; updateHud(); });
+      $("restart-button").addEventListener("click", () => { $("pause-button").textContent = "Pause"; resetGame(); });
+
+      updateDecisionPanel(fallbackDecision); resetGame(); window.requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
